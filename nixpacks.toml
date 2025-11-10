@@ -1,0 +1,24 @@
+[phases.setup]
+# System-level packages required for building and running the app
+nixPkgs = ['php82', 'composer', 'nodejs_20', 'git', 'unzip']
+
+[phases.install]
+# Install PHP and JS dependencies (production only)
+cmds = [
+  'composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader',
+  'npm ci'
+]
+
+[phases.build]
+# Build frontend assets and cache Laravel metadata for production
+cmds = [
+  'npm run build',
+  'php artisan config:cache',
+  'php artisan route:cache',
+  'php artisan view:cache',
+  'php artisan event:cache'
+]
+
+[start]
+# Expose the Laravel app on the platform-provided PORT
+cmd = 'php artisan serve --host=0.0.0.0 --port=${PORT:-8080}'

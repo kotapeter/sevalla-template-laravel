@@ -1,0 +1,73 @@
+worker_processes auto;
+
+events { worker_connections 1024; }
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile      on;
+    keepalive_timeout  65;
+
+    server {
+        # Expose the app on the platform-provided port
+        listen ${PORT};
+        server_name _;
+
+        # Increase request body limits (tune as needed)
+        client_max_body_size 50m;
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
+
+        # Serve static assets directly if present
+        location ~* \.(?:css|js|jpg|jpeg|png|gif|ico|svg|woff2?)$ {
+            root /app/public;
+            try_files $uri @app;
+            expires 7d;
+            add_header Cache-Control "public";
+        }
+
+        # Proxy WebSocket and HTTP API traffic for Reverb
+        location ^~ /app {
+            proxy_pass http://127.0.0.1:8082;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "Upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 600s;
+        }
+
+        # Some Reverb endpoints (e.g., /apps/{id}/events)
+        location ^~ /apps {
+            proxy_pass http://127.0.0.1:8082;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "Upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 600s;
+        }
+
+        # Everything else goes to the Laravel app
+        location @app {
+            proxy_pass http://127.0.0.1:8081;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location / {
+            # Let Nginx serve existing files, otherwise proxy to app
+            root /app/public;
+            try_files $uri @app;
+        }
+    }
+}
+
+
