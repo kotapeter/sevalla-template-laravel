@@ -8,13 +8,13 @@ cmds = [
   'if [ ! -x /app/bin/composer ]; then mkdir -p /app/bin && curl -sS https://getcomposer.org/installer -o composer-setup.php && php composer-setup.php --install-dir=/app/bin --filename=composer && rm composer-setup.php; fi',
   'NODE_VERSION=25.1.0; if ! node -v 2>/dev/null | grep -q "v$NODE_VERSION"; then ARCH="$(uname -m)"; case "$ARCH" in x86_64) NODE_ARCH="x64";; aarch64) NODE_ARCH="arm64";; *) NODE_ARCH="x64";; esac; curl -fsSL https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-$NODE_ARCH.tar.xz -o /tmp/node.tar.xz && mkdir -p /opt/node && tar -xJf /tmp/node.tar.xz -C /opt/node --strip-components=1 && ln -sf /opt/node/bin/node /usr/local/bin/node && ln -sf /opt/node/bin/npm /usr/local/bin/npm && ln -sf /opt/node/bin/npx /usr/local/bin/npx; fi',
   'php /app/bin/composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader',
-  'npm ci'
+  '/opt/node/bin/npm ci'
 ]
 
 [phases.build]
 # Build frontend assets and cache Laravel metadata for production.
 cmds = [
-  'npm run build',
+  '/opt/node/bin/npm run build',
   'php artisan config:cache',
   'php artisan route:cache',
   'php artisan view:cache',
