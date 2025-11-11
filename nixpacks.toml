@@ -12,5 +12,6 @@ nixPkgs = ['php84', 'nginx', 'git', 'unzip', 'curl', 'xz']
 # Install PHP and JS dependencies (production only).
 cmds = [
   'if [ ! -x /app/bin/composer ]; then mkdir -p /app/bin && curl -sS https://getcomposer.org/installer -o composer-setup.php && php composer-setup.php --install-dir=/app/bin --filename=composer && rm composer-setup.php; fi',
-  'php /app/bin/composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader'
+  'php /app/bin/composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader',
+  'mkdir -p /var/log/nginx && ln -sf /dev/stderr /var/log/nginx/error.log'
 ]
