@@ -1,6 +1,6 @@
 [phases.setup]
 # System-level packages required for building and running the app.
-nixPkgs = ['php84', 'git', 'unzip', 'curl', 'xz', 'cacert']
+nixPkgs = ['php84', 'git', 'unzip', 'curl', 'xz']
 
 [phases.install]
 # Install PHP and JS dependencies (production only).
