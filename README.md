@@ -36,22 +36,20 @@ Set these in **App → Environment variables**:
 - `APP_URL` (e.g., your Sevalla domain)
 - `ASSET_URL` (usually the same as `APP_URL`)
 - Database:
-  - If using a Sevalla database: connect it under **App → Networking → Connected services** and enable “Add environment variables”. This will add `DB_URL`.
-  - Or set discrete vars: `DB_CONNECTION` (`mysql` or `pgsql`), `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`.
+  - Go to **App → Networking → Connected services** and enable “Add environment variables”.
 
 Notes:
 - Default file/session/cache drivers work out of the box; adjust if you use Redis, S3, etc.
 
 ## 4. Run database migrations (one-time per deploy)
 
-Create a one-off process:
-- Go to **App → Processes → Create process → Job** and set:
+Go to **App → Processes → Create process → Job** and set:
 
 ```bash
 php artisan migrate --force
 ```
 
-Run this after each deploy when you add new migrations.
+This will run after each deploy.
 
 <img width="540" src="https://github.com/user-attachments/assets/7af80896-c431-4cd4-b5f0-5034b2c65d23" />
 
@@ -78,20 +76,7 @@ Click **Deploy now** in Sevalla. After the build:
 - Laravel caches are warmed
 - The web process starts on the assigned `$PORT`
 
-## Local development
-
-```bash
-cp .env.example .env
-php artisan key:generate
-composer install
-npm install
-npm run dev    # or: npm run build
-php artisan serve
-```
-
-Open http://127.0.0.1:8000
-
-## Advanced: Custom PHP settings via `.user.ini`
+## Custom PHP settings via `.user.ini`
 
 To increase PHP upload/body limits, create a `.user.ini` in the project root (same folder as `composer.json`):
 
@@ -102,74 +87,3 @@ post_max_size = 50M
 ```
 
 Commit this file and redeploy. The settings apply at runtime.
-
-## Advanced: Optional Nginx reverse proxy with custom config
-
-By default this template serves via `php artisan serve` (no Nginx). If you need Nginx directives (e.g., `client_max_body_size`, custom buffers), you can run Nginx in front of PHP:
-
-1. Add packages (Nginx + envsubst) to `nixpacks.toml`:
-
-```toml
-[phases.setup]
-# Add to existing list.
-nixPkgs = ['php82', 'composer', 'nodejs_20', 'git', 'unzip', 'nginx', 'gettext']
-```
-
-2. Add an `nginx.conf.template` to the repo root:
-
-```nginx
-# File: nginx.conf.template
-worker_processes auto;
-events { worker_connections 1024; }
-
-http {
-    include       mime.types;
-    default_type  application/octet-stream;
-    sendfile      on;
-    keepalive_timeout  65;
-
-    server {
-        # Use the platform port. We'll substitute this with envsubst at start.
-        listen ${PORT};
-        server_name _;
-
-        # Example limits/buffers you may tune.
-        client_max_body_size 50m;
-        proxy_buffer_size 128k;
-        proxy_buffers 4 256k;
-        proxy_busy_buffers_size 256k;
-
-        # Serve static assets directly if present.
-        location ~* \.(?:css|js|jpg|jpeg|png|gif|ico|svg|woff2?)$ {
-            root /app/public;
-            try_files $uri @app;
-            expires 7d;
-            add_header Cache-Control "public";
-        }
-
-        # Proxy everything else to PHP's built-in server.
-        location @app {
-            proxy_pass http://127.0.0.1:8081;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-
-        location / {
-            try_files $uri @app;
-        }
-    }
-}
-```
-
-3. Replace the start command to run both processes (PHP + Nginx):
-
-```toml
-[start]
-cmd = 'sh -lc "php artisan serve --host=127.0.0.1 --port=8081 & envsubst < nginx.conf.template > nginx.conf && nginx -c $PWD/nginx.conf -g \"daemon off;\""' 
-```
-
-Notes:
-- `.user.ini` is still required to raise PHP upload limits (`post_max_size`, `upload_max_filesize`). `client_max_body_size` only raises Nginx’s limit.
-- If you use MySQL or Postgres, add the corresponding PHP extensions in `nixpacks.toml` setup packages (e.g., `php82Extensions.pdo_mysql` or `php82Extensions.pdo_pgsql`) and configure DB env vars as in step 3.
