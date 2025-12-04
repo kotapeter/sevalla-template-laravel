@@ -1,5 +1,5 @@
 FROM serversideup/php:8.5-frankenphp
 
-COPY . /var/www/html/
-
+WORKDIR /var/www/html
+COPY . .
 RUN composer install --ignore-platform-reqs
